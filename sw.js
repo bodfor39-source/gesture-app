@@ -1,9 +1,14 @@
+<<<<<<< HEAD
 
 const CACHE_NAME = 'gesture-app-v11';
+=======
+const CACHE_NAME = 'gesture-app-v7';
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
 const urlsToCache = [
   './index.html',
   './manifest.json',
   './suara_jokowi.mp3',
+<<<<<<< HEAD
   './lagu_kita.mp3',
   './video_pikiran.mp4',
   './jumpscare.mp4',
@@ -17,10 +22,14 @@ const urlsToCache = [
   './heart_media_8.jpg',
   './heart_media_9.jpg',
   './heart_media_besar.mp4'
+=======
+  './lagu_kita.mp3'
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
+<<<<<<< HEAD
     caches.open(CACHE_NAME).then((cache) => {
       // Pakai per-file catch (bukan cache.addAll polos) supaya kalau ada
       // file opsional yang BELUM kamu isi (mis. jumpscare.mp4 atau salah
@@ -29,6 +38,9 @@ self.addEventListener('install', (event) => {
         urlsToCache.map((url) => cache.add(url).catch((err) => console.warn('Gagal cache (opsional):', url, err)))
       );
     })
+=======
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache))
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
   );
 });
 
@@ -45,4 +57,7 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((response) => response || fetch(event.request))
   );
 });
+<<<<<<< HEAD
 
+=======
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359

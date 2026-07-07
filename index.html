@@ -10,6 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 
+<<<<<<< HEAD
 <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&display=swap" rel="stylesheet">
 <style>
   :root { --app-vh: 1vh; }
@@ -22,6 +23,13 @@
     padding:16px;
     padding-top:max(16px, env(safe-area-inset-top));
     padding-bottom:max(16px, env(safe-area-inset-bottom));
+=======
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Roboto,Arial,sans-serif; }
+  body {
+    background:#0f0f1a; color:#f0f0f0; min-height:100vh;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:16px;
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
   }
   h1 { font-size:1.3rem; margin-bottom:4px; text-align:center; }
   p.subtitle { font-size:0.8rem; color:#a0a0b0; margin-bottom:16px; text-align:center; }
@@ -47,6 +55,7 @@
   #appRoot.visible { display:flex; }
 
   /* Container TANPA aspect-ratio fixed -> menyesuaikan rasio kamera asli
+<<<<<<< HEAD
      (di-set otomatis via JS), agar tidak gepeng/melar di HP/Laptop/Tablet.
      PENTING: max-height dibatasi pakai dvh supaya kalau kamera HP/tablet
      mengembalikan stream PORTRAIT (lebih tinggi dari lebar - umum terjadi
@@ -75,6 +84,21 @@
     body.device-hp .video-container { max-height:78dvh; }
     body.device-tablet .video-container { max-height:82dvh; }
   }
+=======
+     (di-set otomatis via JS), agar tidak gepeng/melar di HP/Laptop/Tablet */
+  .video-container {
+    position:relative; width:100%; max-width:640px;
+    background:#000; border-radius:16px; overflow:hidden;
+    box-shadow:0 8px 30px rgba(0,0,0,0.5); border:2px solid #2a2a40;
+    display:flex; align-items:center; justify-content:center;
+    transition:max-width .2s ease;
+    touch-action:none; /* penting supaya gesture pinch-zoom kita yg handle, bukan browser */
+  }
+  /* Penyesuaian ukuran per jenis perangkat yang dipilih user di layar awal */
+  body.device-hp .video-container { max-width:420px; }
+  body.device-tablet .video-container { max-width:760px; }
+  body.device-laptop .video-container { max-width:640px; }
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
 
   /* ===================== MODE LAYAR PENUH (FULLSCREEN) =====================
      Dipakai sebagai class toggle via JS (bukan cuma andalkan Fullscreen API
@@ -82,18 +106,30 @@
      termasuk Safari iOS yang tidak mendukung requestFullscreen() untuk div. */
   .video-container.is-fullscreen {
     position:fixed; inset:0; z-index:9999;
+<<<<<<< HEAD
     width:100vw; height:100dvh; max-width:100vw; max-height:100dvh;
+=======
+    width:100vw; height:100vh; max-width:100vw; max-height:100vh;
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
     border-radius:0; border:none; box-shadow:none;
   }
   body.fs-lock { overflow:hidden; }
   .video-container.is-fullscreen .zoom-wrapper canvas,
   .video-container.is-fullscreen .zoom-wrapper video#inputVideo {
+<<<<<<< HEAD
     max-height:100dvh;
+=======
+    max-height:100vh;
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
   }
   /* Di mode layar penuh, canvas mengikuti tinggi layar dulu baru lebar,
      supaya video landscape tetap penuh di HP yang dirotasi ke samping. */
   .video-container.is-fullscreen canvas {
+<<<<<<< HEAD
     width:auto; height:100dvh; max-width:100vw; object-fit:contain;
+=======
+    width:auto; height:100vh; max-width:100vw; object-fit:contain;
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
   }
 
   /* Wrapper yang di-scale/translate untuk fitur ZOOM. Elemen di dalamnya
@@ -106,11 +142,15 @@
   }
 
   video { display:none; }
+<<<<<<< HEAD
   canvas {
     display:block; width:100%; height:100%;
     object-fit:contain;
     transform:scaleX(-1);
   }
+=======
+  canvas { width:100%; height:auto; display:block; transform:scaleX(-1); }
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
 
   .status-badge {
     position:absolute; top:12px; left:12px; padding:6px 14px; border-radius:20px;
@@ -307,6 +347,7 @@
   .close-panel-btn { background:#2a2a40 !important; box-shadow:none !important; margin-top:14px; width:100%; }
 
   #thinkingToolBtn { background:linear-gradient(135deg,#a78bfa,#7c3aed); box-shadow:0 4px 14px rgba(167,139,250,0.4); }
+<<<<<<< HEAD
   #heartNameToolBtn { background:linear-gradient(135deg,#f472b6,#db2777); box-shadow:0 4px 14px rgba(244,114,182,0.4); }
 
   /* ===================== 🫰 LADANG GELEMBUNG HATI (finger-heart, 100 gelembung) ===================== */
@@ -392,6 +433,8 @@
   body.device-hp .heart-name-text { font-size:1.35rem; }
   body.device-tablet .heart-name-box { width:52%; max-width:360px; }
   body.device-tablet .heart-name-text { font-size:2.4rem; }
+=======
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
 </style>
 </head>
 <body>
@@ -444,6 +487,7 @@
           </div>
           <div class="thought-tail"><span></span><span></span><span></span></div>
         </div>
+<<<<<<< HEAD
 
         <!-- 🫰 Gestur finger-heart: 100 gelembung hati transparan naik dari bawah, tiap gelembung berisi foto -->
         <div id="fingerHeartField" class="finger-heart-field"></div>
@@ -462,13 +506,21 @@
       <video id="jumpscareVideo" src="jumpscare.mp4" playsinline></video>
     </div>
 
+=======
+      </div>
+    </div>
+
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
     <div class="controls">
       <button id="startBtn">▶ Mulai Kamera</button>
       <button id="stopBtn" disabled>⏹ Hentikan Kamera</button>
       <button id="lyricsToolBtn">🎵 Atur Lirik Manual</button>
       <button id="fistTextToolBtn">🗣️ Atur Teks Suara Jokowi</button>
       <button id="thinkingToolBtn">🧠 Atur Teks Awan Pikiran</button>
+<<<<<<< HEAD
       <button id="heartNameToolBtn">💞 Atur Nama Hati</button>
+=======
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
       <button id="changeDeviceBtn" style="background:#3a3a4a;">🔄 Ganti Perangkat</button>
     </div>
 
@@ -478,13 +530,17 @@
       ✊ Genggam tangan (Fist) → suara diputar, video normal, teks muncul di bawah.<br>
       ✌️ Telunjuk + jari tengah (V-Sign) → video blur, lagu &amp; lirik otomatis diputar.<br>
       ☝️ Telunjuk saja (jari lain terkepal) → awan pikiran muncul, video "video_pikiran.mp4" diputar lengkap dengan lagunya &amp; teks custom di atasnya.<br>
+<<<<<<< HEAD
       🫰 Jari jentik/hati mini (jempol &amp; telunjuk bertemu, jari lain terkepal) → puluhan gelembung hati transparan naik dari bawah berisi foto.<br>
       🫶 Dua tangan membentuk hati bersama → hati berdenyut muncul berisi nama yang bisa kamu atur.<br>
+=======
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
       🤏 Cubit dua jari (pinch) atau tombol ➕/➖ untuk memperbesar/memperkecil tampilan kamera.<br>
       Semua diproses langsung di perangkat Anda (on-device), tidak ada data dikirim ke server.
     </div>
   </div>
 
+<<<<<<< HEAD
   <!-- ============ PANEL PENGATURAN NAMA HATI (🫶) ============ -->
   <div id="heartNamePanelOverlay" class="panel-overlay">
     <div class="lyrics-panel">
@@ -502,6 +558,8 @@
     </div>
   </div>
 
+=======
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
   <!-- ============ PANEL PENGATURAN TEKS AWAN PIKIRAN ============ -->
   <div id="thinkingPanelOverlay" class="panel-overlay">
     <div class="lyrics-panel">
@@ -599,9 +657,12 @@
       <clipPath id="cloudClipPath" clipPathUnits="objectBoundingBox">
         <path d="M0.20,0.64 C0.10,0.64 0.05,0.50 0.10,0.39 C0.075,0.25 0.175,0.14 0.275,0.18 C0.30,0.07 0.425,0.04 0.50,0.11 C0.60,0.00 0.75,0.07 0.75,0.21 C0.85,0.21 0.90,0.36 0.825,0.46 C0.90,0.57 0.85,0.71 0.75,0.71 C0.75,0.82 0.65,0.89 0.55,0.82 C0.475,0.93 0.325,0.93 0.275,0.82 C0.175,0.86 0.125,0.75 0.20,0.64 Z" />
       </clipPath>
+<<<<<<< HEAD
       <clipPath id="heartClipPath" clipPathUnits="objectBoundingBox">
         <path d="M0.5,0.92 C0.15,0.68 0.0,0.45 0.0,0.28 C0.0,0.10 0.15,0.0 0.30,0.0 C0.42,0.0 0.5,0.08 0.5,0.18 C0.5,0.08 0.58,0.0 0.70,0.0 C0.85,0.0 1.0,0.10 1.0,0.28 C1.0,0.45 0.85,0.68 0.5,0.92 Z" />
       </clipPath>
+=======
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
     </defs>
   </svg>
 
@@ -621,6 +682,7 @@
   const thoughtBubble = document.getElementById('thoughtBubble');
   const thoughtBubbleText = document.getElementById('thoughtBubbleText');
   const thoughtVideo = document.getElementById('thoughtVideo');
+<<<<<<< HEAD
   const fingerHeartField = document.getElementById('fingerHeartField');
   const jumpscareOverlay = document.getElementById('jumpscareOverlay');
   const jumpscareVideo = document.getElementById('jumpscareVideo');
@@ -666,6 +728,11 @@
   window.addEventListener('resize', () => fitContainerToVideo(lastVideoW, lastVideoH));
   window.addEventListener('orientationchange', () => setTimeout(() => fitContainerToVideo(lastVideoW, lastVideoH), 200));
 
+=======
+  const videoContainer = document.getElementById('videoContainer');
+  const zoomWrapper = document.getElementById('zoomWrapper');
+
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
   let cameraInstance = null;
   let handsInstance = null;
   let streamRef = null;
@@ -747,6 +814,7 @@
     thoughtVideo.currentTime = 0;
   }
 
+<<<<<<< HEAD
   // ---- Gestur 🫰 "Finger Heart" -> 100 gelembung hati transparan naik dari bawah ----
   // ISI FILE: taruh 8 file foto di folder yang sama dengan index.html.
   // 8 foto ini otomatis diulang/diduplikasi sampai jadi 100 gelembung.
@@ -876,6 +944,8 @@
     heartNameBox.classList.remove('active');
   }
 
+=======
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
   // ===================== DEVICE PICKER =====================
   const deviceSelectOverlay = document.getElementById('deviceSelectOverlay');
   const appRoot = document.getElementById('appRoot');
@@ -886,7 +956,10 @@
     localStorage.setItem('gestureAppDevice', device);
     deviceSelectOverlay.style.display = 'none';
     appRoot.classList.add('visible');
+<<<<<<< HEAD
     setTimeout(() => fitContainerToVideo(lastVideoW, lastVideoH), 50);
+=======
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
   }
 
   document.querySelectorAll('.device-card').forEach(card => {
@@ -922,8 +995,11 @@
   function enterFullscreenMode() {
     isFullscreenMode = true;
     videoContainer.classList.add('is-fullscreen');
+<<<<<<< HEAD
     videoContainer.style.width = '';
     videoContainer.style.height = '';
+=======
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
     document.body.classList.add('fs-lock');
     fullscreenBtn.textContent = '✕';
     fullscreenBtn.title = 'Keluar Layar Penuh';
@@ -949,7 +1025,10 @@
     if (screen.orientation && screen.orientation.unlock) {
       try { screen.orientation.unlock(); } catch (e) {}
     }
+<<<<<<< HEAD
     fitContainerToVideo(lastVideoW, lastVideoH);
+=======
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
   }
 
   fullscreenBtn.addEventListener('click', () => {
@@ -1133,6 +1212,7 @@
     alert('Teks awan pikiran dikembalikan ke default.');
   });
 
+<<<<<<< HEAD
   // ===================== NAMA HATI (🫶) - dari localStorage jika ada =====================
   const heartNameToolBtn = document.getElementById('heartNameToolBtn');
   const heartNamePanelOverlay = document.getElementById('heartNamePanelOverlay');
@@ -1162,6 +1242,8 @@
     heartNamePanelOverlay.classList.remove('visible');
   });
 
+=======
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
   // ===================== PANEL "TANDAI WAKTU" GENERIK =====================
   // Dipakai untuk 2 hal: lirik lagu_kita.mp3 & teks suara_jokowi.mp3.
   // Dibuat sebagai fungsi generik supaya tidak duplikasi logika.
@@ -1307,6 +1389,7 @@
    * Sumbu Y: 0 = atas frame, 1 = bawah frame -> semakin KECIL y = semakin TINGGI posisi
    */
 
+<<<<<<< HEAD
   function landmarkDist(a, b) {
     return Math.hypot(a.x - b.x, a.y - b.y);
   }
@@ -1354,10 +1437,34 @@
   function isFist(lm) {
     const f = getFingerStates(lm);
     return !f.index && !f.middle && !f.ring && !f.pinky && isThumbFolded(lm);
+=======
+  function isVSign(lm) {
+    const MARGIN = 0.02;
+    const indexUp  = (lm[6].y - lm[8].y)  > MARGIN;
+    const middleUp = (lm[10].y - lm[12].y) > MARGIN;
+    const ringBent  = (lm[16].y - lm[14].y) > MARGIN;
+    const pinkyBent = (lm[20].y - lm[18].y) > MARGIN;
+    return indexUp && middleUp && ringBent && pinkyBent;
+  }
+
+  function isFist(lm) {
+    const MARGIN = 0.02;
+    const indexFolded  = (lm[8].y  - lm[5].y)  > MARGIN;
+    const middleFolded = (lm[12].y - lm[9].y)  > MARGIN;
+    const ringFolded   = (lm[16].y - lm[13].y) > MARGIN;
+    const pinkyFolded  = (lm[20].y - lm[17].y) > MARGIN;
+
+    const dTip = Math.hypot(lm[4].x - lm[17].x, lm[4].y - lm[17].y);
+    const dMcp = Math.hypot(lm[2].x - lm[17].x, lm[2].y - lm[17].y);
+    const thumbFolded = dTip < dMcp;
+
+    return indexFolded && middleFolded && ringFolded && pinkyFolded && thumbFolded;
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
   }
 
   // --- Deteksi "Berpikir" (☝️ hanya telunjuk berdiri, jari lain terkepal) ---
   function isThinking(lm) {
+<<<<<<< HEAD
     const f = getFingerStates(lm);
     return f.index && !f.middle && !f.ring && !f.pinky;
   }
@@ -1409,6 +1516,14 @@
     const bSelfPinch = landmarkDist(b[4], b[8]) < scale * 0.55;
 
     return thumbsClose && indexClose && fingersAboveWrist && !aSelfPinch && !bSelfPinch;
+=======
+    const MARGIN = 0.02;
+    const indexUp      = (lm[6].y - lm[8].y)  > MARGIN;  // telunjuk berdiri
+    const middleFolded = (lm[12].y - lm[9].y) > MARGIN;  // jari tengah terkepal
+    const ringFolded    = (lm[16].y - lm[13].y) > MARGIN; // jari manis terkepal
+    const pinkyFolded   = (lm[20].y - lm[17].y) > MARGIN; // kelingking terkepal
+    return indexUp && middleFolded && ringFolded && pinkyFolded;
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
   }
 
   const HD_FILTER = 'contrast(1.08) saturate(1.15) brightness(1.03)';
@@ -1417,9 +1532,12 @@
     canvasElement.width = results.image.width;
     canvasElement.height = results.image.height;
     canvasElement.style.aspectRatio = `${results.image.width} / ${results.image.height}`;
+<<<<<<< HEAD
     if (results.image.width !== lastVideoW || results.image.height !== lastVideoH) {
       fitContainerToVideo(results.image.width, results.image.height);
     }
+=======
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
 
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
@@ -1427,6 +1545,7 @@
     let vSignDetected = false;
     let fistDetected = false;
     let thinkingDetected = false;
+<<<<<<< HEAD
     let fingerHeartDetected = false;
     let middleFingerDetected = false;
     const twoHandHeartDetected = results.multiHandLandmarks && isTwoHandHeart(results.multiHandLandmarks);
@@ -1437,10 +1556,18 @@
         else if (isFist(lm)) { fistDetected = true; }
         else if (isMiddleFingerUp(lm)) { middleFingerDetected = true; }
         else if (isFingerHeart(lm)) { fingerHeartDetected = true; }
+=======
+
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+      for (const lm of results.multiHandLandmarks) {
+        if (isVSign(lm)) { vSignDetected = true; break; }
+        else if (isFist(lm)) { fistDetected = true; }
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
         else if (isThinking(lm)) { thinkingDetected = true; }
       }
     }
 
+<<<<<<< HEAD
     if (twoHandHeartDetected) {
       canvasCtx.filter = HD_FILTER;
       updateStatus('normal');
@@ -1453,16 +1580,23 @@
       if (!heartNameActive) startHeartName();
 
     } else if (vSignDetected) {
+=======
+    if (vSignDetected) {
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
       canvasCtx.filter = HD_FILTER + ' blur(15px)';
       updateStatus('blur');
 
       cancelVSignStop();
       cancelFistStop();
       cancelThinkingStop();
+<<<<<<< HEAD
       cancelFingerHeartStop();
       if (thinkingActive) stopThinkingBubbleImmediate(); // otomatis pause video awan juga
       if (fingerHeartActive) stopFingerHeartImmediate();
       if (heartNameActive) scheduleHeartNameStop();
+=======
+      if (thinkingActive) stopThinkingBubbleImmediate(); // otomatis pause video awan juga
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
 
       if (!fistAudio.paused) { fistAudio.pause(); fistAudio.currentTime = 0; }
       isFistAudioTriggered = false;
@@ -1481,10 +1615,14 @@
 
       cancelFistStop();
       cancelThinkingStop();
+<<<<<<< HEAD
       cancelFingerHeartStop();
       if (thinkingActive) stopThinkingBubbleImmediate();
       if (fingerHeartActive) stopFingerHeartImmediate();
       if (heartNameActive) scheduleHeartNameStop();
+=======
+      if (thinkingActive) stopThinkingBubbleImmediate();
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
       if (isVSignAudioTriggered) scheduleVSignStop();
 
       if (!isFistAudioTriggered) {
@@ -1494,6 +1632,7 @@
       }
       fistTextBox.classList.add('active');
 
+<<<<<<< HEAD
     } else if (middleFingerDetected) {
       canvasCtx.filter = HD_FILTER;
       updateStatus('normal');
@@ -1515,6 +1654,8 @@
       if (heartNameActive) scheduleHeartNameStop();
       if (!fingerHeartActive) startFingerHeart();
 
+=======
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
     } else if (thinkingDetected) {
       canvasCtx.filter = HD_FILTER;
       updateStatus('thinking');
@@ -1522,8 +1663,11 @@
       cancelThinkingStop();
       if (isVSignAudioTriggered) scheduleVSignStop();
       if (isFistAudioTriggered) scheduleFistStop();
+<<<<<<< HEAD
       if (fingerHeartActive) scheduleFingerHeartStop();
       if (heartNameActive) scheduleHeartNameStop();
+=======
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
       if (!thinkingActive) startThinkingBubble();
 
     } else {
@@ -1535,9 +1679,12 @@
       if (isVSignAudioTriggered) scheduleVSignStop();
       if (isFistAudioTriggered) scheduleFistStop();
       if (thinkingActive) scheduleThinkingStop();
+<<<<<<< HEAD
       if (fingerHeartActive) scheduleFingerHeartStop();
       if (heartNameActive) scheduleHeartNameStop();
       middleFingerWasDetected = false;
+=======
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
     }
 
     canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
@@ -1627,6 +1774,7 @@
     cancelVSignStop();
     cancelFistStop();
     cancelThinkingStop();
+<<<<<<< HEAD
     cancelFingerHeartStop();
     cancelHeartNameStop();
     stopThinkingBubbleImmediate();
@@ -1635,6 +1783,9 @@
     jumpscareOverlay.classList.remove('active');
     jumpscareVideo.pause();
     middleFingerWasDetected = false;
+=======
+    stopThinkingBubbleImmediate();
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
     fistAudio.pause(); fistAudio.currentTime = 0;
     vSignAudio.pause(); vSignAudio.currentTime = 0;
     isFistAudioTriggered = false;
@@ -1663,4 +1814,7 @@
 </script>
 </body>
 </html>
+<<<<<<< HEAD
 
+=======
+>>>>>>> 2db919a80b8908dbe0c063310af39a222a4e2359
