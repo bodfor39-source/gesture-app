@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Gesture Blur App</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f0f1a">
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Roboto,Arial,sans-serif; }
+  body {
+    background:#0f0f1a; color:#f0f0f0; min-height:100vh;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:16px;
+  }
+  h1 { font-size:1.3rem; margin-bottom:4px; text-align:center; }
+  p.subtitle { font-size:0.8rem; color:#a0a0b0; margin-bottom:16px; text-align:center; }
+
+  /* ===================== DEVICE PICKER (LAYAR AWAL) ===================== */
+  #deviceSelectOverlay {
+    position:fixed; inset:0; background:#0f0f1a; z-index:100;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:24px; text-align:center;
+  }
+  #deviceSelectOverlay h2 { font-size:1.25rem; margin-bottom:8px; }
+  #deviceSelectOverlay p { font-size:0.85rem; color:#a0a0b0; margin-bottom:28px; max-width:340px; }
+  .device-options { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; max-width:420px; }
+  .device-card {
+    background:#1a1a2a; border:2px solid #2a2a40; border-radius:14px;
+    padding:20px 18px; width:110px; cursor:pointer; transition:all .15s ease;
+  }
+  .device-card:hover, .device-card:active { border-color:#8b5cf6; background:#22223a; transform:translateY(-2px); }
+  .device-card .icon { font-size:2rem; display:block; margin-bottom:8px; }
+  .device-card .label { font-size:0.85rem; font-weight:600; }
+
+  #appRoot { display:none; flex-direction:column; align-items:center; }
+  #appRoot.visible { display:flex; }
+
+  /* Container TANPA aspect-ratio fixed -> menyesuaikan rasio kamera asli
+     (di-set otomatis via JS), agar tidak gepeng/melar di HP/Laptop/Tablet */
+  .video-container {
+    position:relative; width:100%; max-width:640px;
+    background:#000; border-radius:16px; overflow:hidden;
+    box-shadow:0 8px 30px rgba(0,0,0,0.5); border:2px solid #2a2a40;
+    display:flex; align-items:center; justify-content:center;
+    transition:max-width .2s ease;
+  }
+  /* Penyesuaian ukuran per jenis perangkat yang dipilih user di layar awal */
+  body.device-hp .video-container { max-width:420px; }
+  body.device-tablet .video-container { max-width:760px; }
+  body.device-laptop .video-container { max-width:640px; }
+
+  video { display:none; }
+  canvas { width:100%; height:auto; display:block; transform:scaleX(-1); }
+
+  .status-badge {
+    position:absolute; top:12px; left:12px; padding:6px 14px; border-radius:20px;
+    font-size:0.78rem; font-weight:600; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); z-index:5;
+  }
+  .status-normal { color:#4ade80; border:1px solid #4ade80; }
+  .status-blur { color:#f87171; border:1px solid #f87171; }
+  .status-fist { color:#fbbf24; border:1px solid #fbbf24; }
+  .status-thinking { color:#a78bfa; border:1px solid #a78bfa; }
+  .status-idle { color:#a0a0b0; border:1px solid #a0a0b0; }
+
+  /* Awan pikiran: muncul saat gestur ☝️ "berpikir" (telunjuk saja, jari lain terkepal).
+     Diberi animasi melayang naik-turun supaya terasa "hidup"/bergerak seperti video. */
+  .thought-bubble {
+    position:absolute;
+    top: 14%;
+    left: 50%;
+    transform: translate(-50%, 0) scale(0.85);
+    width: 78%;
+    max-width: 420px;
+    z-index: 12;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+  .thought-bubble.active {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+    animation: bubbleFloat 3s ease-in-out infinite;
+  }
+  @keyframes bubbleFloat {
+    0%, 100% { transform: translate(-50%, 0) scale(1); }
+    50% { transform: translate(-50%, -10px) scale(1.02); }
+  }
+  .thought-bubble .cloud-shape {
+    background:#ffffff; color:#1a1a2a; border-radius:50% 50% 48% 48% / 60% 60% 40% 40%;
+    padding:22px 26px; text-align:center; font-weight:700; font-size:1rem; line-height:1.4;
+    box-shadow:0 10px 30px rgba(0,0,0,0.4);
+    position:relative;
+  }
+  .thought-bubble .cloud-shape::before,
+  .thought-bubble .cloud-shape::after {
+    content:''; position:absolute; background:#ffffff; border-radius:50%;
+  }
+  .thought-bubble .cloud-shape::before { width:22px; height:22px; left:36%; bottom:-24px; }
+  .thought-bubble .cloud-shape::after { width:12px; height:12px; left:28%; bottom:-38px; }
+  body.device-hp .thought-bubble .cloud-shape { font-size:0.85rem; padding:18px 20px; }
+  body.device-tablet .thought-bubble .cloud-shape { font-size:1.2rem; padding:26px 30px; }
+
+  /* Lirik melayang DI TENGAH video, mirip caption video klip musik.
+     Ukuran font menyesuaikan device supaya "penuh layar" secara proporsional. */
+  .lyrics-box {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -40%) scale(0.95);
+    width: 88%;
+    max-width: 560px;
+    text-align: center;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #ffffff;
+    text-shadow:
+      0 2px 8px rgba(0,0,0,0.9),
+      0 0 20px rgba(0,0,0,0.6);
+    letter-spacing: 0.3px;
+    line-height: 1.4;
+    z-index: 10;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+  .lyrics-box.active {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  body.device-hp .lyrics-box { font-size: 1.3rem; width:92%; }
+  body.device-tablet .lyrics-box { font-size: 2rem; width:82%; }
+  @media (max-width:480px) {
+    .lyrics-box { font-size: 1.15rem; width: 90%; }
+  }
+
+  .controls { margin-top:20px; display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
+  button {
+    padding:12px 28px; font-size:1rem; font-weight:600; border:none; border-radius:10px;
+    cursor:pointer; background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff;
+    box-shadow:0 4px 14px rgba(99,102,241,0.4);
+  }
+  button:disabled { background:#3a3a4a; box-shadow:none; cursor:not-allowed; }
+  #stopBtn { background:linear-gradient(135deg,#ef4444,#dc2626); box-shadow:0 4px 14px rgba(239,68,68,0.4); }
+  #lyricsToolBtn { background:linear-gradient(135deg,#0ea5e9,#0284c7); box-shadow:0 4px 14px rgba(14,165,233,0.4); }
+  .info-box { margin-top:16px; font-size:0.72rem; color:#808090; text-align:center; max-width:500px; line-height:1.5; }
+  .loading-text { color:#fbbf24; font-size:0.82rem; margin-top:10px; display:none; }
+  @media (max-width:480px){ h1{font-size:1.05rem;} button{padding:10px 20px; font-size:0.9rem;} }
+
+  /* ===================== PANEL PENGATURAN LIRIK MANUAL ===================== */
+  #lyricsPanelOverlay {
+    position:fixed; inset:0; background:rgba(5,5,10,0.92); z-index:200;
+    display:none; align-items:center; justify-content:center; padding:16px;
+  }
+  #lyricsPanelOverlay.visible { display:flex; }
+  .lyrics-panel {
+    background:#15152a; border:1px solid #2a2a40; border-radius:14px;
+    padding:20px; width:100%; max-width:520px; max-height:88vh; overflow-y:auto;
+  }
+  .lyrics-panel h3 { font-size:1.05rem; margin-bottom:6px; }
+  .lyrics-panel p.hint { font-size:0.75rem; color:#a0a0b0; margin-bottom:12px; line-height:1.5; }
+  .lyrics-panel textarea {
+    width:100%; min-height:140px; background:#0f0f1a; color:#eee; border:1px solid #2a2a40;
+    border-radius:8px; padding:10px; font-size:0.85rem; resize:vertical; margin-bottom:12px;
+  }
+  .tag-progress { font-size:0.8rem; color:#8b5cf6; margin-bottom:6px; }
+  .current-line-display {
+    background:#0f0f1a; border:1px solid #6366f1; border-radius:8px; padding:14px;
+    font-size:1rem; font-weight:600; text-align:center; margin-bottom:12px; min-height:52px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .lyrics-panel .row { display:flex; gap:8px; flex-wrap:wrap; }
+  .lyrics-panel .row button { flex:1; padding:10px 14px; font-size:0.85rem; }
+  .close-panel-btn { background:#2a2a40 !important; box-shadow:none !important; margin-top:14px; width:100%; }
+
+  #thinkingPanelOverlay {
+    position:fixed; inset:0; background:rgba(5,5,10,0.92); z-index:200;
+    display:none; align-items:center; justify-content:center; padding:16px;
+  }
+  #thinkingPanelOverlay.visible { display:flex; }
+  #thinkingToolBtn { background:linear-gradient(135deg,#a78bfa,#7c3aed); box-shadow:0 4px 14px rgba(167,139,250,0.4); }
+</style>
+</head>
+<body>
+
+  <!-- ============ LAYAR PILIH PERANGKAT (TAMPIL PERTAMA KALI) ============ -->
+  <div id="deviceSelectOverlay">
+    <h2>✌️✊ Gesture App</h2>
+    <p>Pilih perangkat yang kamu pakai supaya tampilan video &amp; lirik menyesuaikan ukuran layar.</p>
+    <div class="device-options">
+      <div class="device-card" data-device="hp">
+        <span class="icon">📱</span>
+        <span class="label">HP</span>
+      </div>
+      <div class="device-card" data-device="tablet">
+        <span class="icon">📲</span>
+        <span class="label">Tablet</span>
+      </div>
+      <div class="device-card" data-device="laptop">
+        <span class="icon">💻</span>
+        <span class="label">Laptop</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ APLIKASI UTAMA (TERSEMBUNYI SAMPAI DEVICE DIPILIH) ============ -->
+  <div id="appRoot">
+    <h1>✌️✊ Gesture App</h1>
+    <p class="subtitle">Bisa digunakan di HP, Laptop, dan Tablet</p>
+
+    <div class="video-container">
+      <span id="statusBadge" class="status-badge status-idle">Kamera belum aktif</span>
+      <video id="inputVideo" playsinline></video>
+      <canvas id="outputCanvas"></canvas>
+      <div id="lyricsBox" class="lyrics-box"></div>
+      <div id="thoughtBubble" class="thought-bubble">
+        <div class="cloud-shape" id="thoughtBubbleText">...</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="startBtn">▶ Mulai Kamera</button>
+      <button id="stopBtn" disabled>⏹ Hentikan Kamera</button>
+      <button id="lyricsToolBtn">🎵 Atur Lirik Manual</button>
+      <button id="thinkingToolBtn">🧠 Atur Teks Awan Pikiran</button>
+      <button id="changeDeviceBtn" style="background:#3a3a4a;">🔄 Ganti Perangkat</button>
+    </div>
+
+    <p id="loadingText" class="loading-text">Memuat model MediaPipe Hands...</p>
+
+    <div class="info-box">
+      ✊ Genggam tangan (Fist) → suara diputar, video normal.<br>
+      ✌️ Telunjuk + jari tengah (V-Sign) → video blur, lagu &amp; lirik otomatis diputar.<br>
+      ☝️ Telunjuk saja (jari lain terkepal) → awan pikiran muncul dengan teks custom.<br>
+      Semua diproses langsung di perangkat Anda (on-device), tidak ada data dikirim ke server.
+    </div>
+  </div>
+
+  <!-- ============ PANEL PENGATURAN TEKS AWAN PIKIRAN ============ -->
+  <div id="thinkingPanelOverlay">
+    <div class="lyrics-panel">
+      <h3>🧠 Atur Teks Awan Pikiran</h3>
+      <p class="hint">
+        Tulis baris-baris teks yang mau muncul di awan pikiran (satu baris = satu baris teks).
+        Teksnya akan otomatis bergantian tiap beberapa detik selama gestur ☝️ "berpikir" ditahan.
+      </p>
+      <textarea id="thinkingTextarea" placeholder="Baris pertama...&#10;Baris kedua...&#10;..."></textarea>
+      <div class="row">
+        <button id="saveThinkingBtn">💾 Simpan</button>
+      </div>
+      <button class="close-panel-btn" id="closeThinkingPanelBtn">Tutup</button>
+      <button class="close-panel-btn" id="resetThinkingBtn" style="margin-top:8px;">🗑 Reset ke Default</button>
+    </div>
+  </div>
+
+  <!-- ============ PANEL PENGATURAN LIRIK MANUAL (TANDAI WAKTU) ============ -->
+  <div id="lyricsPanelOverlay">
+    <div class="lyrics-panel">
+      <h3>🎵 Atur Lirik "lagu_kita.mp3"</h3>
+      <p class="hint">
+        Saya tidak bisa mendengarkan/transkrip otomatis file audio kamu. Tapi kamu bisa paste teks lirik
+        (satu baris = satu baris lirik) lalu putar lagunya sambil menekan tombol <b>"Tandai Waktu Baris Ini"</b>
+        tepat saat baris itu mulai dinyanyikan. Timing akan otomatis tersimpan dan langsung dipakai di app ini.
+      </p>
+
+      <div id="stepInput">
+        <textarea id="lyricsTextarea" placeholder="Paste lirik di sini, satu baris per baris...&#10;Contoh:&#10;Baris pertama lagu&#10;Baris kedua lagu&#10;..."></textarea>
+        <div class="row">
+          <button id="startTaggingBtn">▶ Mulai Tandai Waktu</button>
+        </div>
+      </div>
+
+      <div id="stepTagging" style="display:none;">
+        <div class="tag-progress" id="tagProgress">Baris 1 / 1</div>
+        <div class="current-line-display" id="currentLineDisplay">...</div>
+        <div class="row">
+          <button id="markLineBtn">⏱ Tandai Waktu Baris Ini</button>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <button id="pauseResumeBtn">⏸ Jeda</button>
+          <button id="skipLineBtn" style="background:#3a3a4a;">⏭ Lewati Baris</button>
+        </div>
+      </div>
+
+      <button class="close-panel-btn" id="closeLyricsPanelBtn">Tutup</button>
+      <button class="close-panel-btn" id="resetLyricsBtn" style="margin-top:8px;">🗑 Reset ke Lirik Default</button>
+    </div>
+  </div>
+
+  <!-- Audio untuk gestur FIST -->
+  <audio id="fistAudio" src="suara_jokowi.mp3" preload="auto"></audio>
+  <!-- Audio untuk gestur V-SIGN -->
+  <audio id="vSignAudio" src="lagu_kita.mp3" preload="auto"></audio>
+
+<script>
+(function () {
+  const videoElement = document.getElementById('inputVideo');
+  const canvasElement = document.getElementById('outputCanvas');
+  const canvasCtx = canvasElement.getContext('2d');
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const statusBadge = document.getElementById('statusBadge');
+  const loadingText = document.getElementById('loadingText');
+  const fistAudio = document.getElementById('fistAudio');
+  const vSignAudio = document.getElementById('vSignAudio');
+  const lyricsBox = document.getElementById('lyricsBox');
+  const thoughtBubble = document.getElementById('thoughtBubble');
+  const thoughtBubbleText = document.getElementById('thoughtBubbleText');
+
+  let cameraInstance = null;
+  let handsInstance = null;
+  let streamRef = null;
+  let isRunning = false;
+
+  let isFistAudioTriggered = false;
+  let isVSignAudioTriggered = false;
+
+  // Toleransi flicker: gestur harus HILANG selama HOLD_MS berturut-turut
+  // baru dianggap benar-benar berhenti (audio & lirik direset ke 0).
+  // Ini mencegah lagu keulang dari detik 0 tiap ada 1 frame deteksi meleset.
+  const HOLD_MS = 500;
+  let vSignStopTimer = null;
+  let fistStopTimer = null;
+
+  function cancelVSignStop() {
+    if (vSignStopTimer) { clearTimeout(vSignStopTimer); vSignStopTimer = null; }
+  }
+  function scheduleVSignStop() {
+    if (vSignStopTimer) return;
+    vSignStopTimer = setTimeout(() => {
+      vSignAudio.pause();
+      vSignAudio.currentTime = 0;
+      isVSignAudioTriggered = false;
+      lyricsBox.classList.remove('active');
+      vSignStopTimer = null;
+    }, HOLD_MS);
+  }
+  function cancelFistStop() {
+    if (fistStopTimer) { clearTimeout(fistStopTimer); fistStopTimer = null; }
+  }
+  function scheduleFistStop() {
+    if (fistStopTimer) return;
+    fistStopTimer = setTimeout(() => {
+      fistAudio.pause();
+      fistAudio.currentTime = 0;
+      isFistAudioTriggered = false;
+      fistStopTimer = null;
+    }, HOLD_MS);
+  }
+
+  // ---- Gestur ☝️ "Berpikir" -> Awan Pikiran ----
+  let thinkingActive = false;
+  let thinkingInterval = null;
+  let thinkingStopTimer = null;
+
+  function cancelThinkingStop() {
+    if (thinkingStopTimer) { clearTimeout(thinkingStopTimer); thinkingStopTimer = null; }
+  }
+  function scheduleThinkingStop() {
+    if (thinkingStopTimer) return;
+    thinkingStopTimer = setTimeout(() => {
+      stopThinkingBubbleImmediate();
+      thinkingStopTimer = null;
+    }, HOLD_MS);
+  }
+  function startThinkingBubble() {
+    thinkingActive = true;
+    thoughtBubble.classList.add('active');
+    let idx = 0;
+    thoughtBubbleText.textContent = thinkingLines[0] || '...';
+    if (thinkingInterval) clearInterval(thinkingInterval);
+    thinkingInterval = setInterval(() => {
+      if (thinkingLines.length === 0) return;
+      idx = (idx + 1) % thinkingLines.length;
+      thoughtBubbleText.textContent = thinkingLines[idx];
+    }, 2500);
+  }
+  function stopThinkingBubbleImmediate() {
+    thinkingActive = false;
+    thoughtBubble.classList.remove('active');
+    if (thinkingInterval) { clearInterval(thinkingInterval); thinkingInterval = null; }
+  }
+
+  // ===================== DEVICE PICKER =====================
+  const deviceSelectOverlay = document.getElementById('deviceSelectOverlay');
+  const appRoot = document.getElementById('appRoot');
+
+  function applyDeviceChoice(device) {
+    document.body.classList.remove('device-hp', 'device-tablet', 'device-laptop');
+    document.body.classList.add('device-' + device);
+    localStorage.setItem('gestureAppDevice', device);
+    deviceSelectOverlay.style.display = 'none';
+    appRoot.classList.add('visible');
+  }
+
+  document.querySelectorAll('.device-card').forEach(card => {
+    card.addEventListener('click', () => applyDeviceChoice(card.dataset.device));
+  });
+
+  // Kalau user sudah pernah pilih sebelumnya, langsung pakai pilihan itu
+  const savedDevice = localStorage.getItem('gestureAppDevice');
+  if (savedDevice) applyDeviceChoice(savedDevice);
+
+  // Tombol "Ganti Perangkat" -> hentikan kamera (kalau lagi jalan) dan
+  // tampilkan lagi layar pilih HP/Laptop/Tablet
+  document.getElementById('changeDeviceBtn').addEventListener('click', () => {
+    stopCamera();
+    appRoot.classList.remove('visible');
+    deviceSelectOverlay.style.display = 'flex';
+  });
+
+  // ===================== LIRIK (default + dari localStorage jika ada) =====================
+  const DEFAULT_LYRICS = [
+    { time: 0, text: "..." },
+    { time: 3, text: "..." },
+    { time: 6, text: "..." },
+  ];
+
+  let lyricsData = loadLyricsFromStorage();
+
+  function loadLyricsFromStorage() {
+    try {
+      const saved = localStorage.getItem('gestureAppLyrics');
+      if (saved) return JSON.parse(saved);
+    } catch (e) { console.warn('Gagal load lirik tersimpan:', e); }
+    return DEFAULT_LYRICS.slice();
+  }
+
+  vSignAudio.addEventListener('timeupdate', () => {
+    const currentTime = vSignAudio.currentTime;
+    let activeLine = "";
+    for (const line of lyricsData) {
+      if (currentTime >= line.time) activeLine = line.text;
+    }
+    lyricsBox.textContent = activeLine;
+  });
+
+  // ===================== TEKS AWAN PIKIRAN (default + dari localStorage jika ada) =====================
+  const DEFAULT_THINKING_LINES = ["Lagi mikir sesuatu...", "..."];
+
+  let thinkingLines = loadThinkingFromStorage();
+
+  function loadThinkingFromStorage() {
+    try {
+      const saved = localStorage.getItem('gestureAppThinkingLines');
+      if (saved) return JSON.parse(saved);
+    } catch (e) { console.warn('Gagal load teks awan tersimpan:', e); }
+    return DEFAULT_THINKING_LINES.slice();
+  }
+
+  const thinkingToolBtn = document.getElementById('thinkingToolBtn');
+  const thinkingPanelOverlay = document.getElementById('thinkingPanelOverlay');
+  const closeThinkingPanelBtn = document.getElementById('closeThinkingPanelBtn');
+  const resetThinkingBtn = document.getElementById('resetThinkingBtn');
+  const thinkingTextarea = document.getElementById('thinkingTextarea');
+  const saveThinkingBtn = document.getElementById('saveThinkingBtn');
+
+  thinkingToolBtn.addEventListener('click', () => {
+    thinkingTextarea.value = thinkingLines.join('\n');
+    thinkingPanelOverlay.classList.add('visible');
+  });
+
+  closeThinkingPanelBtn.addEventListener('click', () => {
+    thinkingPanelOverlay.classList.remove('visible');
+  });
+
+  saveThinkingBtn.addEventListener('click', () => {
+    const lines = thinkingTextarea.value
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.length > 0);
+
+    if (lines.length === 0) {
+      alert('Tulis dulu minimal 1 baris teks.');
+      return;
+    }
+
+    thinkingLines = lines;
+    localStorage.setItem('gestureAppThinkingLines', JSON.stringify(lines));
+    alert('Teks awan pikiran tersimpan!');
+    thinkingPanelOverlay.classList.remove('visible');
+  });
+
+  resetThinkingBtn.addEventListener('click', () => {
+    localStorage.removeItem('gestureAppThinkingLines');
+    thinkingLines = DEFAULT_THINKING_LINES.slice();
+    thinkingTextarea.value = thinkingLines.join('\n');
+    alert('Teks awan pikiran dikembalikan ke default.');
+  });
+
+  // ===================== PANEL "TANDAI WAKTU LIRIK" =====================
+  const lyricsToolBtn = document.getElementById('lyricsToolBtn');
+  const lyricsPanelOverlay = document.getElementById('lyricsPanelOverlay');
+  const closeLyricsPanelBtn = document.getElementById('closeLyricsPanelBtn');
+  const resetLyricsBtn = document.getElementById('resetLyricsBtn');
+  const lyricsTextarea = document.getElementById('lyricsTextarea');
+  const startTaggingBtn = document.getElementById('startTaggingBtn');
+  const stepInput = document.getElementById('stepInput');
+  const stepTagging = document.getElementById('stepTagging');
+  const tagProgress = document.getElementById('tagProgress');
+  const currentLineDisplay = document.getElementById('currentLineDisplay');
+  const markLineBtn = document.getElementById('markLineBtn');
+  const pauseResumeBtn = document.getElementById('pauseResumeBtn');
+  const skipLineBtn = document.getElementById('skipLineBtn');
+
+  let taggingLines = [];
+  let taggingIndex = 0;
+  let taggingResult = [];
+
+  lyricsToolBtn.addEventListener('click', () => {
+    lyricsPanelOverlay.classList.add('visible');
+    stepInput.style.display = 'block';
+    stepTagging.style.display = 'none';
+    vSignAudio.pause();
+    vSignAudio.currentTime = 0;
+  });
+
+  closeLyricsPanelBtn.addEventListener('click', () => {
+    lyricsPanelOverlay.classList.remove('visible');
+    vSignAudio.pause();
+    vSignAudio.currentTime = 0;
+  });
+
+  resetLyricsBtn.addEventListener('click', () => {
+    localStorage.removeItem('gestureAppLyrics');
+    lyricsData = DEFAULT_LYRICS.slice();
+    alert('Lirik dikembalikan ke default.');
+  });
+
+  startTaggingBtn.addEventListener('click', () => {
+    taggingLines = lyricsTextarea.value
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.length > 0);
+
+    if (taggingLines.length === 0) {
+      alert('Tulis dulu lirik lagunya di kotak teks (satu baris per baris).');
+      return;
+    }
+
+    taggingIndex = 0;
+    taggingResult = [];
+    stepInput.style.display = 'none';
+    stepTagging.style.display = 'block';
+    currentLineDisplay.textContent = taggingLines[0];
+    tagProgress.textContent = `Baris 1 / ${taggingLines.length}`;
+
+    vSignAudio.currentTime = 0;
+    vSignAudio.play().catch(err => console.warn('Audio blocked:', err));
+    pauseResumeBtn.textContent = '⏸ Jeda';
+  });
+
+  markLineBtn.addEventListener('click', () => {
+    taggingResult.push({ time: parseFloat(vSignAudio.currentTime.toFixed(2)), text: taggingLines[taggingIndex] });
+    advanceTaggingLine();
+  });
+
+  skipLineBtn.addEventListener('click', () => {
+    advanceTaggingLine();
+  });
+
+  function advanceTaggingLine() {
+    taggingIndex++;
+    if (taggingIndex >= taggingLines.length) {
+      finishTagging();
+      return;
+    }
+    currentLineDisplay.textContent = taggingLines[taggingIndex];
+    tagProgress.textContent = `Baris ${taggingIndex + 1} / ${taggingLines.length}`;
+  }
+
+  function finishTagging() {
+    vSignAudio.pause();
+    vSignAudio.currentTime = 0;
+    lyricsData = taggingResult;
+    localStorage.setItem('gestureAppLyrics', JSON.stringify(taggingResult));
+    alert('Selesai! Lirik & timing sudah tersimpan dan langsung dipakai saat gestur ✌️ terdeteksi.');
+    lyricsPanelOverlay.classList.remove('visible');
+  }
+
+  pauseResumeBtn.addEventListener('click', () => {
+    if (vSignAudio.paused) {
+      vSignAudio.play().catch(err => console.warn('Audio blocked:', err));
+      pauseResumeBtn.textContent = '⏸ Jeda';
+    } else {
+      vSignAudio.pause();
+      pauseResumeBtn.textContent = '▶ Lanjut';
+    }
+  });
+
+  /**
+   * Landmark MediaPipe Hands (21 titik):
+   * 0: Wrist | 1-4: Thumb | 5-8: Index | 9-12: Middle | 13-16: Ring | 17-20: Pinky
+   * Sumbu Y: 0 = atas frame, 1 = bawah frame -> semakin KECIL y = semakin TINGGI posisi
+   */
+
+  function isVSign(lm) {
+    const MARGIN = 0.02;
+    const indexUp  = (lm[6].y - lm[8].y)  > MARGIN;
+    const middleUp = (lm[10].y - lm[12].y) > MARGIN;
+    const ringBent  = (lm[16].y - lm[14].y) > MARGIN;
+    const pinkyBent = (lm[20].y - lm[18].y) > MARGIN;
+    return indexUp && middleUp && ringBent && pinkyBent;
+  }
+
+  function isFist(lm) {
+    const MARGIN = 0.02;
+    const indexFolded  = (lm[8].y  - lm[5].y)  > MARGIN;
+    const middleFolded = (lm[12].y - lm[9].y)  > MARGIN;
+    const ringFolded   = (lm[16].y - lm[13].y) > MARGIN;
+    const pinkyFolded  = (lm[20].y - lm[17].y) > MARGIN;
+
+    const dTip = Math.hypot(lm[4].x - lm[17].x, lm[4].y - lm[17].y);
+    const dMcp = Math.hypot(lm[2].x - lm[17].x, lm[2].y - lm[17].y);
+    const thumbFolded = dTip < dMcp;
+
+    return indexFolded && middleFolded && ringFolded && pinkyFolded && thumbFolded;
+  }
+
+  // --- Deteksi "Berpikir" (☝️ hanya telunjuk berdiri, jari lain terkepal) ---
+  function isThinking(lm) {
+    const MARGIN = 0.02;
+    const indexUp      = (lm[6].y - lm[8].y)  > MARGIN;  // telunjuk berdiri
+    const middleFolded = (lm[12].y - lm[9].y) > MARGIN;  // jari tengah terkepal
+    const ringFolded    = (lm[16].y - lm[13].y) > MARGIN; // jari manis terkepal
+    const pinkyFolded   = (lm[20].y - lm[17].y) > MARGIN; // kelingking terkepal
+    return indexUp && middleFolded && ringFolded && pinkyFolded;
+  }
+
+  const HD_FILTER = 'contrast(1.08) saturate(1.15) brightness(1.03)';
+
+  function onResults(results) {
+    canvasElement.width = results.image.width;
+    canvasElement.height = results.image.height;
+    canvasElement.style.aspectRatio = `${results.image.width} / ${results.image.height}`;
+
+    canvasCtx.save();
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+    let vSignDetected = false;
+    let fistDetected = false;
+    let thinkingDetected = false;
+
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+      for (const lm of results.multiHandLandmarks) {
+        if (isVSign(lm)) { vSignDetected = true; break; }
+        else if (isFist(lm)) { fistDetected = true; }
+        else if (isThinking(lm)) { thinkingDetected = true; }
+      }
+    }
+
+    if (vSignDetected) {
+      canvasCtx.filter = HD_FILTER + ' blur(15px)';
+      updateStatus('blur');
+
+      cancelVSignStop();
+      cancelFistStop();
+      cancelThinkingStop();
+      if (thinkingActive) stopThinkingBubbleImmediate();
+
+      if (!fistAudio.paused) { fistAudio.pause(); fistAudio.currentTime = 0; }
+      isFistAudioTriggered = false;
+
+      if (!isVSignAudioTriggered) {
+        vSignAudio.currentTime = 0;
+        vSignAudio.play().catch(err => console.warn('Audio blocked:', err));
+        isVSignAudioTriggered = true;
+      }
+      lyricsBox.classList.add('active');
+
+    } else if (fistDetected) {
+      canvasCtx.filter = HD_FILTER;
+      updateStatus('fist');
+
+      cancelFistStop();
+      cancelThinkingStop();
+      if (thinkingActive) stopThinkingBubbleImmediate();
+      if (isVSignAudioTriggered) scheduleVSignStop();
+
+      if (!isFistAudioTriggered) {
+        fistAudio.currentTime = 0;
+        fistAudio.play().catch(err => console.warn('Audio blocked:', err));
+        isFistAudioTriggered = true;
+      }
+
+    } else if (thinkingDetected) {
+      canvasCtx.filter = HD_FILTER;
+      updateStatus('thinking');
+
+      cancelThinkingStop();
+      if (isVSignAudioTriggered) scheduleVSignStop();
+      if (isFistAudioTriggered) scheduleFistStop();
+      if (!thinkingActive) startThinkingBubble();
+
+    } else {
+      // Tidak ada gestur terdeteksi frame ini -> JANGAN langsung stop.
+      // Kasih toleransi HOLD_MS dulu, siapa tahu cuma flicker deteksi sesaat.
+      canvasCtx.filter = HD_FILTER;
+      if (!isVSignAudioTriggered && !isFistAudioTriggered && !thinkingActive) updateStatus('normal');
+
+      if (isVSignAudioTriggered) scheduleVSignStop();
+      if (isFistAudioTriggered) scheduleFistStop();
+      if (thinkingActive) scheduleThinkingStop();
+    }
+
+    canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+    canvasCtx.restore();
+  }
+
+  function updateStatus(state) {
+    if (state === 'blur') {
+      statusBadge.textContent = '🔒 Peace - Blur & Lagu Aktif';
+      statusBadge.className = 'status-badge status-blur';
+    } else if (state === 'fist') {
+      statusBadge.textContent = '✊ Fist - Suara Aktif';
+      statusBadge.className = 'status-badge status-fist';
+    } else if (state === 'thinking') {
+      statusBadge.textContent = '🤔 Berpikir - Awan Aktif';
+      statusBadge.className = 'status-badge status-thinking';
+    } else if (state === 'normal') {
+      statusBadge.textContent = '👁 Normal (HD)';
+      statusBadge.className = 'status-badge status-normal';
+    } else {
+      statusBadge.textContent = 'Kamera belum aktif';
+      statusBadge.className = 'status-badge status-idle';
+    }
+  }
+
+  async function startCamera() {
+    startBtn.disabled = true;
+    loadingText.style.display = 'block';
+    try {
+      await fistAudio.play();
+      fistAudio.pause();
+      fistAudio.currentTime = 0;
+
+      await vSignAudio.play();
+      vSignAudio.pause();
+      vSignAudio.currentTime = 0;
+    } catch (unlockErr) {
+      console.warn('Audio unlock gagal (akan dicoba lagi saat gestur terdeteksi):', unlockErr);
+    }
+
+    try {
+      handsInstance = new Hands({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+      });
+      handsInstance.setOptions({
+        maxNumHands: 2, modelComplexity: 1,
+        minDetectionConfidence: 0.7, minTrackingConfidence: 0.7
+      });
+      handsInstance.onResults(onResults);
+
+      const constraints = {
+        video: { facingMode: { ideal: 'user' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false
+      };
+      streamRef = await navigator.mediaDevices.getUserMedia(constraints);
+      videoElement.srcObject = streamRef;
+      await videoElement.play();
+
+      cameraInstance = new Camera(videoElement, {
+        onFrame: async () => { if (handsInstance && isRunning) await handsInstance.send({ image: videoElement }); },
+        width: 1280, height: 720
+      });
+      cameraInstance.start();
+      isRunning = true;
+
+      loadingText.style.display = 'none';
+      stopBtn.disabled = false;
+      updateStatus('normal');
+    } catch (err) {
+      loadingText.style.display = 'none';
+      startBtn.disabled = false;
+      alert('Gagal mengakses kamera: ' + err.message + '\n\nPastikan izin kamera diaktifkan dan koneksi HTTPS/localhost.');
+      console.error(err);
+    }
+  }
+
+  function stopCamera() {
+    isRunning = false;
+    if (cameraInstance) { cameraInstance.stop(); cameraInstance = null; }
+    if (streamRef) { streamRef.getTracks().forEach(t => t.stop()); streamRef = null; }
+    if (handsInstance) { handsInstance.close(); handsInstance = null; }
+
+    cancelVSignStop();
+    cancelFistStop();
+    cancelThinkingStop();
+    stopThinkingBubbleImmediate();
+    fistAudio.pause(); fistAudio.currentTime = 0;
+    vSignAudio.pause(); vSignAudio.currentTime = 0;
+    isFistAudioTriggered = false;
+    isVSignAudioTriggered = false;
+    lyricsBox.classList.remove('active');
+
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    updateStatus('idle');
+  }
+
+  startBtn.addEventListener('click', startCamera);
+  stopBtn.addEventListener('click', stopCamera);
+  window.addEventListener('beforeunload', stopCamera);
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW gagal:', err));
+    });
+  }
+})();
+</script>
+</body>
+</html>
